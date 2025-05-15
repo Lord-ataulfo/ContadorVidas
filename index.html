@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contador de Vidas MTG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+</head>
+
+<body
+    class="bg-gradient-to-b from-black via-gray-900 to-gray-800 min-h-screen flex flex-col items-center text-white font-['Roboto']">
+
+    <div class="container mx-auto p-4 w-full max-w-7xl"> {/* Max width aumentado para más tarjetas */}
+        <header class="text-center mb-6">
+            <h1 class="text-4xl font-bold">Contador de Vidas MTG</h1>
+        </header>
+
+        <div
+            class="mb-6 p-4 bg-gray-800 rounded-lg shadow-md flex flex-col sm:flex-row flex-wrap justify-around items-center gap-4">
+            <div>
+                <label for="num-players-select" class="block text-sm font-medium text-gray-300 mb-1">Jugadores:</label>
+                <select id="num-players-select"
+                    class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    <option value="2">2 Jugadores</option>
+                    <option value="3">3 Jugadores</option>
+                    <option value="4" selected>4 Jugadores</option>
+                    <option value="5">5 Jugadores</option>
+                    <option value="6">6 Jugadores</option>
+                </select>
+            </div>
+            <div>
+                <label for="format-select" class="block text-sm font-medium text-gray-300 mb-1">Formato (Vidas):</label>
+                <select id="format-select"
+                    class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    <option value="20">Estándar / Modern (20)</option>
+                    <option value="40" selected>Commander (40)</option>
+                    <option value="25">Brawl (25)</option>
+                    <option value="30">Gigante de dos cabezas (30)</option>
+                </select>
+            </div>
+            <button id="reset-game-btn"
+                class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-150">
+                Reiniciar Partida
+            </button>
+        </div>
+
+        <main id="player-cards-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            <!-- Las tarjetas de jugador se insertarán aquí por JavaScript -->
+        </main>
+    </div>
+
+    <script src="js/script.js"></script>
+</body>
+
+</html>

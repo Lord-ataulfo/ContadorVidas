@@ -1,40 +1,45 @@
-/* Importaciones de Tailwind (si no usas CDN y tienes un build process) */
-/* @tailwind base; */
-/* @tailwind components; */
-/* @tailwind utilities; */
-
 body {
     font-family: 'Roboto', sans-serif;
+    /* Fuente base, MedievalSharp para títulos */
 }
 
-/* Estilo para el input de archivo, para que el botón se vea mejor */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: 'MedievalSharp', cursive;
+}
+
+/* Estilo para el input de archivo */
 input[type="file"] {
     color: transparent;
-    /* Oculta el texto "No file chosen" */
 }
 
 input[type="file"]::-webkit-file-upload-button {
     visibility: hidden;
-    /* Oculta el botón por defecto en Chrome/Safari */
 }
 
 input[type="file"]::before {
-    content: 'Cambiar Fondo';
+    content: 'Fondo';
+    /* Texto más corto */
     display: inline-block;
     background: #4a5568;
     /* gray-700 */
     border: 1px solid #2d3748;
     /* gray-800 */
     color: white;
-    padding: 0.5rem 1rem;
+    padding: 0.3rem 0.6rem;
+    /* Más pequeño */
     border-radius: 0.375rem;
     /* rounded-md */
     cursor: pointer;
     font-weight: bold;
     transition: background-color 0.15s ease-in-out;
-    font-size: 0.75rem;
-    /* Más pequeño para que quepa */
-    line-height: 1rem;
+    font-size: 0.7rem;
+    /* Más pequeño */
+    line-height: 0.9rem;
 }
 
 input[type="file"]:hover::before {
@@ -42,51 +47,118 @@ input[type="file"]:hover::before {
     /* gray-800 */
 }
 
-input[type="file"]:active::before {
-    background: #1a202c;
-    /* gray-900 */
-}
-
-/* Clase para cuando un jugador pierde */
-.player-lost .player-card-content {
-    opacity: 0.3;
-    pointer-events: none;
-    /* Deshabilitar interacciones */
-}
-
-.player-lost .loss-overlay {
+/* Overlay de Derrota */
+.player-lost .player-card-content-wrapper::after {
+    content: 'DERROTA';
+    position: absolute;
+    inset: 0;
+    background-color: rgba(185, 28, 28, 0.7);
+    /* bg-red-700 opacity 70% */
+    color: white;
     display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    /* Ajusta según sea necesario */
+    font-weight: bold;
+    z-index: 10;
+    border-radius: 0.75rem;
+    /* rounded-xl */
+    font-family: 'MedievalSharp', cursive;
 }
+
+.player-lost .player-card-content {
+    opacity: 0.5;
+    /* Para que se vea el contenido debajo pero atenuado */
+}
+
+
+/* Overlay de Victoria */
+.player-winner .player-card-content-wrapper {
+    position: relative;
+    /* Necesario para el pseudo-elemento */
+}
+
+.player-winner .player-card-content-wrapper::after {
+    content: 'VICTORIA!';
+    position: absolute;
+    inset: 0;
+    background-color: rgba(37, 99, 235, 0.5);
+    /* bg-blue-700 opacity 50% */
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    /* Ajusta según sea necesario */
+    font-weight: bold;
+    z-index: 10;
+    border-radius: 0.75rem;
+    /* rounded-xl */
+    font-family: 'MedievalSharp', cursive;
+}
+
+/* No necesitamos opacidad en el contenido para el ganador */
+
+
+/* Contador temporal para botones de vida */
+.life-change-preview {
+    position: absolute;
+    top: -25px;
+    /* Arriba del botón */
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    white-space: nowrap;
+    z-index: 20;
+    /* Encima de otros elementos de la tarjeta */
+}
+
 
 /* Estilos para el contenedor principal en pantallas grandes */
 @media (min-width: 1920px) {
     body>.container {
-        /* El primer div hijo directo del body */
         max-width: 1800px;
-        /* O el ancho que prefieras, manteniendo márgenes */
         margin-left: auto;
         margin-right: auto;
     }
 }
 
-/* Ajuste para tarjetas más pequeñas si hay muchos jugadores */
+/* Ajustes para tarjetas si hay muchos jugadores */
 @media (min-width: 1024px) {
 
     /* lg breakpoint */
     .lg\:grid-cols-3 .player-card-content {
-        min-height: 360px;
-        /* Reducir altura mínima si hay 3 columnas */
+        min-height: auto;
+        /* Permitir que se encojan un poco más */
+        padding: 0.75rem;
+        /* p-3 */
     }
 
-    .lg\:grid-cols-3 .text-7xl {
+    .lg\:grid-cols-3 .text-6xl {
         /* Vida */
-        font-size: 4rem;
-        /* 64px */
+        font-size: 3rem;
+        /* 48px */
     }
 
-    .lg\:grid-cols-3 .text-2xl {
+    .lg\:grid-cols-3 .text-xl {
         /* Nombre */
-        font-size: 1.25rem;
-        /* 20px */
+        font-size: 1.125rem;
+        /* 18px */
     }
+
+    .lg\:grid-cols-3 .player-card-content-wrapper::after {
+        /* Mensajes derrota/victoria */
+        font-size: 2.5rem;
+    }
+}
+
+.bg-gray-750 {
+    /* Para el a cabecera de la tabla de historial */
+    background-color: #374151;
+    /* Un poco más oscuro que gray-700 */
 }

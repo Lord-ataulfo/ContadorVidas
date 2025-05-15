@@ -4,18 +4,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contador de Vidas MTG</title>
+    <title>Tuga Infectando - Contador MTG</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 </head>
 
-<body
-    class="bg-gradient-to-b from-black via-gray-900 to-gray-800 min-h-screen flex flex-col items-center text-white font-['Roboto']">
+<body class="bg-gradient-to-b from-black via-gray-900 to-gray-800 min-h-screen flex flex-col items-center text-white">
 
-    <div class="container mx-auto p-4 w-full max-w-7xl"> {/* Max width aumentado para más tarjetas */}
+    <div class="container mx-auto p-4 w-full max-w-7xl">
         <header class="text-center mb-6">
-            <h1 class="text-4xl font-bold">Contador de Vidas MTG</h1>
+            <h1 class="text-5xl font-['MedievalSharp'] text-red-500">Tuga Infectando</h1>
+            <p class="text-xl text-gray-400 font-['MedievalSharp']">Contador de Vidas Magic: The Gathering</p>
         </header>
 
         <div
@@ -23,7 +23,7 @@
             <div>
                 <label for="num-players-select" class="block text-sm font-medium text-gray-300 mb-1">Jugadores:</label>
                 <select id="num-players-select"
-                    class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-red-500 focus:border-red-500 block w-full p-2.5">
                     <option value="2">2 Jugadores</option>
                     <option value="3">3 Jugadores</option>
                     <option value="4" selected>4 Jugadores</option>
@@ -34,22 +34,59 @@
             <div>
                 <label for="format-select" class="block text-sm font-medium text-gray-300 mb-1">Formato (Vidas):</label>
                 <select id="format-select"
-                    class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-red-500 focus:border-red-500 block w-full p-2.5">
                     <option value="20">Estándar / Modern (20)</option>
                     <option value="40" selected>Commander (40)</option>
                     <option value="25">Brawl (25)</option>
                     <option value="30">Gigante de dos cabezas (30)</option>
                 </select>
             </div>
+            <div>
+                <label for="timer-display" class="block text-sm font-medium text-gray-300 mb-1">Tiempo de
+                    Partida:</label>
+                <div id="timer-display" class="bg-gray-700 text-white text-lg p-2.5 rounded-lg w-full text-center">
+                    00:00:00</div>
+            </div>
             <button id="reset-game-btn"
-                class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-150">
+                class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-150 self-end">
                 Reiniciar Partida
             </button>
         </div>
 
-        <main id="player-cards-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        <main id="player-cards-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
             <!-- Las tarjetas de jugador se insertarán aquí por JavaScript -->
         </main>
+
+        <section id="match-history-section" class="mt-8 p-4 bg-gray-800 rounded-lg shadow-md">
+            <h2 class="text-2xl font-['MedievalSharp'] text-center mb-4">Historial de Partidas</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-700">
+                    <thead class="bg-gray-750">
+                        <tr>
+                            <th scope="col"
+                                class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">#
+                            </th>
+                            <th scope="col"
+                                class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                Jugadores</th>
+                            <th scope="col"
+                                class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                Duración</th>
+                            <th scope="col"
+                                class="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="match-history-body" class="bg-gray-800 divide-y divide-gray-700">
+                        <!-- Filas del historial aquí -->
+                    </tbody>
+                </table>
+            </div>
+            <button id="clear-history-btn"
+                class="mt-4 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-150 mx-auto block">
+                Limpiar Historial
+            </button>
+        </section>
     </div>
 
     <script src="js/script.js"></script>

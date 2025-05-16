@@ -47,10 +47,16 @@
                 <div id="timer-display" class="bg-gray-700 text-white text-lg p-2.5 rounded-lg w-full text-center">
                     00:00:00</div>
             </div>
-            <button id="reset-game-btn"
-                class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-150 self-end">
-                Reiniciar Partida
-            </button>
+            <div class="flex flex-col space-y-2 sm:space-y-0 sm:flex-row sm:space-x-2 self-end">
+                <button id="reset-game-btn"
+                    class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-150">
+                    Reiniciar Partida
+                </button>
+                <button id="hard-reset-btn"
+                    class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-150">
+                    Reiniciar Todo
+                </button>
+            </div>
         </div>
 
         <main id="player-cards-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
@@ -83,7 +89,7 @@
                 </table>
             </div>
             <button id="clear-history-btn"
-                class="mt-4 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-150 mx-auto block">
+                class="mt-4 bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-150 mx-auto block">
                 Limpiar Historial
             </button>
         </section>

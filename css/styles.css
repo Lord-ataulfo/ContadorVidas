@@ -65,18 +65,18 @@ input[type="file"]:hover::before {
     border-radius: 0.75rem;
     /* rounded-xl */
     font-family: 'MedievalSharp', cursive;
+    pointer-events: none;
+    /* Para que no interfiera con clicks debajo si es necesario */
 }
 
 .player-lost .player-card-content {
     opacity: 0.5;
-    /* Para que se vea el contenido debajo pero atenuado */
 }
 
 
 /* Overlay de Victoria */
 .player-winner .player-card-content-wrapper {
     position: relative;
-    /* Necesario para el pseudo-elemento */
 }
 
 .player-winner .player-card-content-wrapper::after {
@@ -90,32 +90,30 @@ input[type="file"]:hover::before {
     align-items: center;
     justify-content: center;
     font-size: 3rem;
-    /* Ajusta según sea necesario */
     font-weight: bold;
     z-index: 10;
     border-radius: 0.75rem;
-    /* rounded-xl */
     font-family: 'MedievalSharp', cursive;
+    pointer-events: none;
 }
-
-/* No necesitamos opacidad en el contenido para el ganador */
-
 
 /* Contador temporal para botones de vida */
 .life-change-preview {
     position: absolute;
-    top: -25px;
+    top: -28px;
     /* Arriba del botón */
     left: 50%;
     transform: translateX(-50%);
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: rgba(0, 0, 0, 0.9);
     color: white;
-    padding: 2px 6px;
+    padding: 3px 8px;
     border-radius: 4px;
-    font-size: 0.9em;
+    font-size: 1em;
+    font-weight: bold;
     white-space: nowrap;
     z-index: 20;
-    /* Encima de otros elementos de la tarjeta */
+    pointer-events: none;
+    /* Para que no capture clicks */
 }
 
 
@@ -134,7 +132,6 @@ input[type="file"]:hover::before {
     /* lg breakpoint */
     .lg\:grid-cols-3 .player-card-content {
         min-height: auto;
-        /* Permitir que se encojan un poco más */
         padding: 0.75rem;
         /* p-3 */
     }
@@ -158,7 +155,29 @@ input[type="file"]:hover::before {
 }
 
 .bg-gray-750 {
-    /* Para el a cabecera de la tabla de historial */
     background-color: #374151;
-    /* Un poco más oscuro que gray-700 */
+}
+
+/* Scrollbar simple para la sección de contadores */
+.scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #4B5563 #1F2937;
+    /* thumb track */
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+    background: #1F2937;
+    /* gray-800 */
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #4B5563;
+    /* gray-600 */
+    border-radius: 4px;
+    border: 2px solid #1F2937;
+    /* gray-800 */
 }

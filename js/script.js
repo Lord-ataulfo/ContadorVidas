@@ -5,64 +5,74 @@ document.addEventListener('DOMContentLoaded', () => {
     let matchHistory = [];
     let gameTimerInterval;
     let elapsedSeconds = 0;
-    let gameInProgress = false; // Para saber si hay una partida activa
-    let gameWon = false; // Para controlar el estado de victoria
+    let gameInProgress = false;
+    let gameWon = false;
 
-    // Para la funcionalidad de mantener presionado
-    let lifeChangeAmount = 0;
-    let lifeChangeInterval;
-    let lifeChangeTimeout; // Para iniciar el conteo después de un breve delay
-    const HOLD_DELAY = 500; // ms antes de que empiece el conteo rápido
-    const HOLD_INTERVAL_SPEED = 100; // ms para cada incremento/decremento al mantener presionado
+    // Constantes para el "hold" de botones de vida
+    const HOLD_START_DELAY = 500; // ms antes de que empiece el conteo rápido
+    const HOLD_INCREMENT_INTERVAL = 1500; // ms para CADA incremento/decremento del preview
+    const HOLD_CHECK_INTERVAL = 100; // ms para chequear mouseup y actualizar el tiempo para el incremento
+
+    // Variables para el "hold"
+    let lifeChangePreviewValue = 0;
+    let lifeChangeHoldInterval;
+    let lifeChangeInitialTimeout;
+    let lastHoldIncrementTime = 0;
+
 
     const playerCardsContainer = document.getElementById('player-cards-container');
     const formatSelect = document.getElementById('format-select');
     const numPlayersSelect = document.getElementById('num-players-select');
-    const resetGameBtn = document.getElementById('reset-game-btn');
+    const resetGameBtn = document.getElementById('reset-game-btn'); // Soft reset
+    const hardResetBtn = document.getElementById('hard-reset-btn'); // Hard reset
     const timerDisplay = document.getElementById('timer-display');
     const matchHistoryBody = document.getElementById('match-history-body');
     const clearHistoryBtn = document.getElementById('clear-history-btn');
 
-    const defaultImages = ["img/default-card-bg1.jpg", "img/default-card-bg2.jpg", "img/default-card-bg1.jpg", "img/default-card-bg2.jpg", "img/default-card-bg1.jpg", "img/default-card-bg2.jpg"]; // Añade más si quieres variedad
+    const defaultImages = [
+        "img/default-card-bg1.jpg", "img/default-card-bg2.jpg",
+        "img/default-card-bg1.jpg", "img/default-card-bg2.jpg",
+        "img/default-card-bg1.jpg", "img/default-card-bg2.jpg"
+    ];
 
     // --- INICIALIZACIÓN Y ESTADO ---
-    function initializePlayers(count) {
+    function initializePlayers(count, isHardReset = false) {
         const newPlayers = [];
-        const storedPlayers = JSON.parse(localStorage.getItem('mtgPlayersData'))?.players || [];
+        const storedPlayerData = JSON.parse(localStorage.getItem('mtgPlayersData'));
+        const storedPlayersArray = storedPlayerData?.players || [];
         const currentStartingLife = parseInt(formatSelect.value);
 
         for (let i = 0; i < count; i++) {
             const playerId = `player${i + 1}`;
             let playerData;
-            const storedP = storedPlayers.find(p => p.id === playerId);
+            // Intentar encontrar un jugador guardado si no es un hard reset
+            const existingStoredPlayer = !isHardReset ? storedPlayersArray.find(p => p.id === playerId) : null;
 
-            if (storedP && storedPlayers.length === count) { // Solo usar si el número de jugadores no cambió
-                playerData = { ...storedP };
-                playerData.life = currentStartingLife; // Siempre resetea la vida al formato actual
+            if (existingStoredPlayer) {
+                playerData = { ...existingStoredPlayer }; // Copia datos guardados (nombre, imagen)
+                // Resetea stats de juego
+                playerData.life = currentStartingLife;
                 playerData.poison = 0;
                 playerData.commanderDamageReceivedFrom = {};
-                // Reinicializar commanderDamage para oponentes correctos
-                for (let j = 0; j < count; j++) {
-                    if (i === j) continue;
-                    const opponentIdForCmd = `player${j + 1}`;
-                    playerData.commanderDamageReceivedFrom[opponentIdForCmd] = 0;
-                }
                 playerData.isLoser = false;
                 playerData.isWinner = false;
-            } else {
+            } else { // Si es hard reset o no hay datos guardados para este ID
                 playerData = {
                     id: playerId,
                     name: `Jugador ${i + 1}`,
+                    image: defaultImages[i % defaultImages.length],
                     life: currentStartingLife,
                     poison: 0,
-                    commanderDamageReceivedFrom: {}, // { opponentId: damage }
-                    image: defaultImages[i % defaultImages.length],
+                    commanderDamageReceivedFrom: {},
                     isLoser: false,
                     isWinner: false,
                 };
-                for (let j = 0; j < count; j++) {
-                    if (i === j) continue;
-                    const opponentIdForCmd = `player${j + 1}`;
+            }
+            // Asegurar que commanderDamageReceivedFrom está inicializado para oponentes actuales
+            for (let j = 0; j < count; j++) {
+                if (i === j) continue;
+                const opponentIdForCmd = `player${j + 1}`;
+                if (!(opponentIdForCmd in playerData.commanderDamageReceivedFrom)) {
                     playerData.commanderDamageReceivedFrom[opponentIdForCmd] = 0;
                 }
             }
@@ -73,11 +83,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function saveState() {
         const stateToSave = {
+            // Guardar solo nombres e imágenes para persistir personalizaciones
             players: players.slice(0, numActivePlayers).map(p => ({
                 id: p.id,
                 name: p.name,
                 image: p.image,
-                // No guardamos vida, veneno, cmd, isLoser, isWinner para que siempre inicien frescos
             })),
             numActivePlayers: numActivePlayers,
             selectedFormat: formatSelect.value,
@@ -90,31 +100,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const storedData = JSON.parse(localStorage.getItem('mtgPlayersData'));
         if (storedData) {
             numPlayersSelect.value = storedData.numActivePlayers || 2;
-            formatSelect.value = storedData.selectedFormat || 40;
+            formatSelect.value = storedData.selectedFormat || 40; // Default Commander
             matchHistory = storedData.matchHistory || [];
-
-            numActivePlayers = parseInt(numPlayersSelect.value);
-            startingLife = parseInt(formatSelect.value);
-            players = initializePlayers(numActivePlayers); // Esto usa nombres/imágenes guardados si es aplicable
-
-        } else {
-            numActivePlayers = parseInt(numPlayersSelect.value);
-            startingLife = parseInt(formatSelect.value);
-            players = initializePlayers(numActivePlayers);
         }
-        renderAllCards();
+        // El resto (numActivePlayers, startingLife, players) se configura en softResetGame
+        // que se llama después de loadState.
         renderMatchHistory();
     }
 
     // --- LÓGICA DEL JUEGO ---
     function checkGameEndConditions() {
-        if (gameWon) return; // Si ya ganó alguien, no hacer nada más
+        if (gameWon) return;
 
         let activePlayersList = players.slice(0, numActivePlayers);
         let nonLosers = [];
 
         activePlayersList.forEach(player => {
-            if (player.isLoser) return; // Si ya está marcado como perdedor, no re-evaluar
+            if (player.isLoser) return; // Ya está marcado
 
             let lostThisCheck = false;
             if (player.life <= 0 || player.poison >= 10) {
@@ -126,13 +128,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
                 }
             }
-            if (lostThisCheck) {
-                player.isLoser = true;
-            }
+            if (lostThisCheck) player.isLoser = true;
 
-            if (!player.isLoser) {
-                nonLosers.push(player);
-            }
+            if (!player.isLoser) nonLosers.push(player);
         });
 
         if (nonLosers.length === 1 && activePlayersList.length > 1) {
@@ -140,22 +138,17 @@ document.addEventListener('DOMContentLoaded', () => {
             gameWon = true;
             stopTimer();
             logMatchResult("Victoria: " + nonLosers[0].name);
-            renderAllCards(); // Para mostrar el estado de victoria
         } else if (nonLosers.length === 0 && activePlayersList.length > 0) {
-            // Empate o todos pierden simultáneamente
-            gameWon = true; // Consideramos el juego terminado
+            gameWon = true;
             stopTimer();
             logMatchResult("Empate / Todos pierden");
-            renderAllCards();
         }
-        else {
-            renderAllCards(); // Actualizar para mostrar perdedores
-        }
+        renderAllCards(); // Siempre renderizar para mostrar cambios
     }
 
-    function resetGame(isFullReset = true) {
-        if (gameInProgress && !gameWon && isFullReset) { // Si se reinicia una partida no terminada
-            logMatchResult("No Terminada");
+    function resetGameLogic(isHardReset) {
+        if (gameInProgress && !gameWon) {
+            logMatchResult("No Terminada"); // Loguear si se interrumpe una partida
         }
         gameWon = false;
         stopTimer();
@@ -165,16 +158,23 @@ document.addEventListener('DOMContentLoaded', () => {
         startingLife = parseInt(formatSelect.value);
         numActivePlayers = parseInt(numPlayersSelect.value);
 
-        // Si no es un full reset (ej. cambio de formato/jugadores sin tocar botón),
-        // se intenta mantener nombres/imágenes. initializePlayers lo maneja.
-        players = initializePlayers(numActivePlayers); // Esto resetea vidas, contadores, y estados de victoria/derrota
+        players = initializePlayers(numActivePlayers, isHardReset);
 
         renderAllCards();
         startTimer();
         gameInProgress = true;
-        if (isFullReset) saveState(); // Guardar solo en reset explícito para no sobreescribir nombres/imágenes muy rápido
+        saveState(); // Guardar el estado (nombres, imágenes) después de inicializar
     }
 
+    function softResetGame() { // Reiniciar partida (mantiene nombres/imágenes)
+        resetGameLogic(false);
+    }
+
+    function hardResetGame() { // Reiniciar todo (nombres/imágenes por defecto)
+        if (confirm("¿Estás seguro de que quieres reiniciar nombres, imágenes y contadores a los valores por defecto?")) {
+            resetGameLogic(true);
+        }
+    }
 
     // --- TEMPORIZADOR ---
     function startTimer() {
@@ -189,7 +189,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function stopTimer() {
         clearInterval(gameTimerInterval);
         gameTimerInterval = null;
-        // gameInProgress se maneja en resetGame o checkGameEndConditions
     }
 
     function updateTimerDisplay() {
@@ -206,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
             id: matchHistory.length + 1,
             players: players.slice(0, numActivePlayers).map(p => ({
                 name: p.name,
-                life: p.life,
+                life: p.life, // Guardar la vida final
                 isWinner: p.isWinner,
                 isLoser: p.isLoser
             })),
@@ -215,8 +214,8 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         matchHistory.push(matchData);
         renderMatchHistory();
-        saveState(); // Guardar historial
-        gameInProgress = false; // La partida actual ha concluido
+        saveState();
+        gameInProgress = false;
     }
 
     function renderMatchHistory() {
@@ -225,14 +224,14 @@ document.addEventListener('DOMContentLoaded', () => {
             matchHistoryBody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-500">No hay partidas registradas.</td></tr>`;
             return;
         }
-        matchHistory.forEach((match, index) => {
+        matchHistory.slice().reverse().forEach((match) => { // Mostrar más recientes primero
             const row = matchHistoryBody.insertRow();
             row.insertCell().textContent = match.id;
 
             const playersCell = row.insertCell();
-            playersCell.className = "px-3 py-2 text-xs";
+            playersCell.className = "px-3 py-2 text-xs whitespace-nowrap";
             match.players.forEach(p => {
-                const statusClass = p.isWinner ? "text-blue-400" : (p.isLoser ? "text-red-400" : "text-gray-300");
+                const statusClass = p.isWinner ? "text-blue-400 font-bold" : (p.isLoser ? "text-red-400" : "text-gray-300");
                 playersCell.innerHTML += `<span class="${statusClass}">${p.name} (${p.life})</span><br>`;
             });
 
@@ -249,25 +248,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-
     // --- RENDERIZADO DE TARJETAS ---
     function renderPlayerCard(player, allActivePlayers) {
         const cardWrapper = document.createElement('div');
         cardWrapper.id = `${player.id}-card-wrapper`;
-        // Aplicar clases de ganador/perdedor al wrapper para que el ::after funcione correctamente
         cardWrapper.className = `player-card-wrapper rounded-xl shadow-2xl overflow-hidden transition-all duration-300 relative ${player.isWinner ? 'player-winner' : ''} ${player.isLoser ? 'player-lost' : ''}`;
         cardWrapper.style.backgroundImage = `url('${player.image}')`;
         cardWrapper.style.backgroundSize = 'cover';
         cardWrapper.style.backgroundPosition = 'center';
 
-        // Nuevo div interno para que el ::after del overlay no oculte el contenido si usamos opacidad en cardContent
         const contentWrapper = document.createElement('div');
-        contentWrapper.className = 'player-card-content-wrapper relative'; // Necesario para el ::after
+        contentWrapper.className = 'player-card-content-wrapper relative';
 
         const cardContent = document.createElement('div');
         cardContent.className = 'player-card-content bg-black bg-opacity-75 p-3 md:p-4 flex flex-col justify-between min-h-[380px] sm:min-h-[420px]';
 
-        // Sección Superior: Nombre e Imagen
         const topSection = document.createElement('div');
         const nameInput = document.createElement('input');
         nameInput.type = 'text';
@@ -275,8 +270,8 @@ document.addEventListener('DOMContentLoaded', () => {
         nameInput.className = "text-xl md:text-2xl font-['MedievalSharp'] bg-transparent border-b-2 border-transparent focus:border-red-500 focus:outline-none w-full text-center mb-1 truncate";
         nameInput.addEventListener('change', (e) => {
             player.name = e.target.value;
-            saveState(); // Guardar solo el nombre
-            renderAllCards(); // Para actualizar nombres en daño de cmd
+            saveState();
+            renderAllCards();
         });
         topSection.appendChild(nameInput);
 
@@ -291,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 reader.onload = (event) => {
                     player.image = event.target.result;
                     cardWrapper.style.backgroundImage = `url('${player.image}')`;
-                    saveState(); // Guardar la imagen
+                    saveState();
                 }
                 reader.readAsDataURL(file);
             }
@@ -299,7 +294,6 @@ document.addEventListener('DOMContentLoaded', () => {
         topSection.appendChild(imageInput);
         cardContent.appendChild(topSection);
 
-        // Sección Central: Vidas
         const lifeSection = document.createElement('div');
         lifeSection.className = 'text-center my-2 md:my-3';
         const lifeDisplay = document.createElement('div');
@@ -308,82 +302,92 @@ document.addEventListener('DOMContentLoaded', () => {
         lifeSection.appendChild(lifeDisplay);
 
         const lifeButtonsContainer = document.createElement('div');
-        lifeButtonsContainer.className = 'flex justify-center space-x-2 mt-1 md:mt-2 relative'; // Relative for preview
+        lifeButtonsContainer.className = 'flex justify-center space-x-2 mt-1 md:mt-2 relative';
 
         ['-', '+'].forEach(op => {
             const btn = document.createElement('button');
-            btn.textContent = op + "1";
-            btn.className = `bg-red-600 hover:bg-red-700 text-white font-bold py-1.5 px-3 md:py-2 md:px-4 rounded-full text-base md:text-lg transition-colors ${op === '+' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'}`;
+            btn.textContent = op + "1"; // Texto inicial del botón
+            const baseColor = op === '+' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700';
+            btn.className = `${baseColor} text-white font-bold py-1.5 px-3 md:py-2 md:px-4 rounded-full text-base md:text-lg transition-colors`;
 
-            const previewCounter = document.createElement('div');
-            previewCounter.className = 'life-change-preview hidden';
-            btn.appendChild(previewCounter); // Adjuntar al botón
+            const previewElement = document.createElement('div');
+            previewElement.className = 'life-change-preview hidden';
+            btn.appendChild(previewElement); // El preview es hijo del botón para posicionamiento relativo
 
-            btn.addEventListener('mousedown', (e) => {
+            const handleLifeChange = (amount) => {
                 if (player.isLoser || player.isWinner || gameWon) return;
-                lifeChangeAmount = (op === '+') ? 1 : -1;
-                player.life += lifeChangeAmount; // Aplicar el primer cambio
-                checkGameEndConditions(); // Chequear después de cada cambio
-                // renderAllCards(); // Ya se llama en checkGameEndConditions si es necesario
-
-                lifeChangeTimeout = setTimeout(() => {
-                    lifeChangeAmount = 0; // Reset para el contador de "hold"
-                    previewCounter.textContent = `${op}0`;
-                    previewCounter.classList.remove('hidden');
-
-                    lifeChangeInterval = setInterval(() => {
-                        lifeChangeAmount += (op === '+') ? 1 : -1;
-                        previewCounter.textContent = `${op}${Math.abs(lifeChangeAmount)}`;
-                    }, HOLD_INTERVAL_SPEED); // Incremento rápido
-                }, HOLD_DELAY); // Delay antes de que empiece el modo "hold"
-            });
-
-            const stopLifeChange = () => {
-                clearTimeout(lifeChangeTimeout);
-                clearInterval(lifeChangeInterval);
-                previewCounter.classList.add('hidden');
-                if (lifeChangeAmount !== 0 && !(op === '+' && lifeChangeAmount === 1) && !(op === '-' && lifeChangeAmount === -1)) {
-                    // Si lifeChangeAmount es distinto del +1/-1 inicial y no es cero
-                    // (El primer +1/-1 ya se aplicó en mousedown)
-                    // Necesitamos aplicar la diferencia acumulada por el "hold"
-                    // La lógica actual aplica el +1/-1 al click, y luego el hold empieza desde 0.
-                    // Si lifeChangeAmount no es 0 después del hold, significa que se acumuló.
-                    // Ejemplo: click es +1. Hold acumula +5. Total aplicado = +1 (click) + +5 (hold)
-                    // La vida ya tiene el +1 del mousedown. Solo aplicamos el resto.
-                    // player.life += lifeChangeAmount; // El amount aquí es el acumulado del hold
-                }
-                // El `lifeChangeAmount` del hold ya se aplicó al display, pero no a la vida del jugador.
-                // La vida del jugador se actualiza con cada tick del renderAllCards llamado desde checkGameEndConditions
-                // Esta parte necesita ser más clara:
-                // En mousedown: player.life += (op === '+') ? 1 : -1;
-                // En mouseup/leave (después del hold): player.life += lifeChangeAmount (donde lifeChangeAmount es el acumulado del hold)
-                // La vida se actualiza en renderAllCards() llamado por checkGameEndConditions().
-                // La clave es que el lifeChangeAmount sea el *adicional* del hold
-                if (previewCounter.textContent && previewCounter.textContent !== `${op}0`) { // Si hubo hold y no fue solo el click inicial
-                    const holdValue = parseInt(previewCounter.textContent.substring(1)) * (op === '+' ? 1 : -1);
-                    if (!isNaN(holdValue) && holdValue !== 0) { // Solo si hubo un valor de hold
-                        player.life += holdValue;
-                    }
-                }
-
-                lifeChangeAmount = 0; // Reset
-                checkGameEndConditions();
-                // renderAllCards(); // Ya se llama
+                player.life += amount;
+                checkGameEndConditions(); // Esto llamará a renderAllCards
             };
 
-            btn.addEventListener('mouseup', stopLifeChange);
-            btn.addEventListener('mouseleave', stopLifeChange); // Si el mouse se va del botón
+            const startHold = () => {
+                if (player.isLoser || player.isWinner || gameWon) return;
+
+                // Aplicar el +1/-1 inicial inmediatamente
+                handleLifeChange((op === '+') ? 1 : -1);
+
+                lifeChangePreviewValue = 0; // El preview del hold empieza en 0
+                lastHoldIncrementTime = Date.now(); // Para el primer incremento del hold
+                previewElement.textContent = `${op}${Math.abs(lifeChangePreviewValue)}`;
+                previewElement.classList.remove('hidden');
+
+                // Intervalo que CHEQUEA si debe incrementar el preview
+                lifeChangeHoldInterval = setInterval(() => {
+                    const now = Date.now();
+                    if (now - lastHoldIncrementTime >= HOLD_INCREMENT_INTERVAL) {
+                        lifeChangePreviewValue += (op === '+') ? 1 : -1;
+                        previewElement.textContent = `${op}${Math.abs(lifeChangePreviewValue)}`;
+                        lastHoldIncrementTime = now;
+                    }
+                }, HOLD_CHECK_INTERVAL); // Chequea frecuentemente
+            };
+
+            const stopHold = () => {
+                clearTimeout(lifeChangeInitialTimeout);
+                clearInterval(lifeChangeHoldInterval);
+                previewElement.classList.add('hidden');
+
+                if (lifeChangePreviewValue !== 0) {
+                    handleLifeChange(lifeChangePreviewValue); // Aplicar el acumulado del hold
+                }
+                lifeChangePreviewValue = 0; // Reset para la próxima
+            };
+
+            btn.addEventListener('mousedown', (e) => {
+                if (e.button !== 0) return; // Solo botón izquierdo
+                // El +1/-1 inicial se aplica DESPUÉS del delay, o al hacer click y soltar rápido
+                lifeChangeInitialTimeout = setTimeout(startHold, HOLD_START_DELAY);
+            });
+
+            btn.addEventListener('mouseup', (e) => {
+                if (e.button !== 0) return;
+                clearTimeout(lifeChangeInitialTimeout); // Cancela el inicio del hold si se suelta antes
+
+                // Si el hold estaba activo (intervalo corriendo)
+                if (lifeChangeHoldInterval) {
+                    stopHold();
+                } else { // Si fue un click rápido (no se activó el hold)
+                    if (!player.isLoser && !player.isWinner && !gameWon) { // Evitar doble aplicación
+                        handleLifeChange((op === '+') ? 1 : -1); // Aplicar el +1/-1 del click rápido
+                    }
+                }
+            });
+            btn.addEventListener('mouseleave', () => { // Si el mouse se va mientras está presionado
+                clearTimeout(lifeChangeInitialTimeout);
+                if (lifeChangeHoldInterval) {
+                    stopHold();
+                }
+            });
+            btn.addEventListener('contextmenu', (e) => e.preventDefault()); // Evitar menú contextual
 
             lifeButtonsContainer.appendChild(btn);
         });
         lifeSection.appendChild(lifeButtonsContainer);
         cardContent.appendChild(lifeSection);
 
-        // Sección Inferior: Contadores
         const countersSection = document.createElement('div');
         countersSection.className = 'space-y-1 text-xs md:text-sm overflow-y-auto max-h-[100px] sm:max-h-[120px] pr-1 scrollbar-thin';
 
-        // Veneno
         const poisonDiv = document.createElement('div');
         poisonDiv.className = 'flex justify-between items-center';
         poisonDiv.innerHTML = `<span class="font-semibold">Veneno: <span class="poison-count text-base">${player.poison}</span></span>`;
@@ -398,25 +402,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 const amount = parseInt(amountStr);
                 player.poison += amount;
                 if (player.poison < 0) player.poison = 0;
-                // player.life -= amount; // Según reglas oficiales, veneno NO reduce vida. Lo quito.
                 checkGameEndConditions();
-                // renderAllCards();
             });
             poisonButtons.appendChild(btn);
         });
         poisonDiv.appendChild(poisonButtons);
         countersSection.appendChild(poisonDiv);
 
-        // Daño de Comandante
         allActivePlayers.forEach(opponent => {
             if (opponent.id === player.id) return;
-
             const commanderDamageDiv = document.createElement('div');
             commanderDamageDiv.className = 'flex justify-between items-center text-xs';
             const damageFromThisOpponent = player.commanderDamageReceivedFrom[opponent.id] || 0;
-
             commanderDamageDiv.innerHTML = `<span class="font-semibold truncate max-w-[80px] sm:max-w-[100px]" title="Cmd de ${opponent.name}">Cmd (${opponent.name.substring(0, 6)}..): <span class="commander-damage-count text-sm">${damageFromThisOpponent}</span></span>`;
-
             const cmdDmgButtons = document.createElement('div');
             cmdDmgButtons.className = 'flex space-x-1';
             ['+1', '-1'].forEach(amountStr => {
@@ -430,9 +428,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (player.commanderDamageReceivedFrom[opponent.id] < 0) {
                         player.commanderDamageReceivedFrom[opponent.id] = 0;
                     }
-                    player.life -= amount; // REGLA: Daño de comandante SÍ reduce vida.
+                    player.life -= amount; // Daño de comandante SÍ reduce vida
                     checkGameEndConditions();
-                    // renderAllCards();
                 });
                 cmdDmgButtons.appendChild(btn);
             });
@@ -443,7 +440,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         contentWrapper.appendChild(cardContent);
         cardWrapper.appendChild(contentWrapper);
-
         return cardWrapper;
     }
 
@@ -452,7 +448,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const activePlayersToRender = players.slice(0, numActivePlayers);
 
         activePlayersToRender.forEach(p => {
-            // Asegurar que el objeto commanderDamageReceivedFrom está bien
             p.commanderDamageReceivedFrom = p.commanderDamageReceivedFrom || {};
             activePlayersToRender.forEach(opp => {
                 if (p.id !== opp.id && !(opp.id in p.commanderDamageReceivedFrom)) {
@@ -474,56 +469,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateGridCols() {
         playerCardsContainer.classList.remove('sm:grid-cols-1', 'sm:grid-cols-2', 'lg:grid-cols-2', 'lg:grid-cols-3');
-        if (numActivePlayers <= 2) {
+        if (numActivePlayers <= 1) { // Para 1 jugador (si se implementara) o por si acaso
+            playerCardsContainer.classList.add('sm:grid-cols-1');
+        } else if (numActivePlayers === 2) {
             playerCardsContainer.classList.add('sm:grid-cols-2');
         } else if (numActivePlayers === 3) {
             playerCardsContainer.classList.add('sm:grid-cols-2', 'lg:grid-cols-3');
         } else if (numActivePlayers === 4) {
-            playerCardsContainer.classList.add('sm:grid-cols-2', 'lg:grid-cols-2'); // O lg:grid-cols-4 para más pequeñas
-        }
-        else { // 5 o 6
+            playerCardsContainer.classList.add('sm:grid-cols-2', 'lg:grid-cols-2');
+        } else { // 5 o 6
             playerCardsContainer.classList.add('sm:grid-cols-2', 'lg:grid-cols-3');
         }
     }
 
     // --- MANEJADORES DE EVENTOS ---
-    numPlayersSelect.addEventListener('change', () => resetGame(false)); // No es un full reset, es cambio de config
-    formatSelect.addEventListener('change', () => resetGame(false));    // No es un full reset
-    resetGameBtn.addEventListener('click', () => resetGame(true));      // Es un full reset
+    numPlayersSelect.addEventListener('change', () => softResetGame());
+    formatSelect.addEventListener('change', () => softResetGame());
+    resetGameBtn.addEventListener('click', () => softResetGame());
+    hardResetBtn.addEventListener('click', () => hardResetGame());
     clearHistoryBtn.addEventListener('click', clearMatchHistory);
 
-
     // --- INICIO ---
-    loadState(); // Cargar estado previo
-    if (!gameInProgress && players.length > 0 && !gameWon) { // Si no hay juego en progreso al cargar (ej. todos los jugadores perdieron o se ganó)
-        resetGame(true); // Iniciar una nueva partida automáticamente
-    } else if (gameInProgress) { // Si el estado cargado indica juego en progreso (esto es más difícil de manejar bien sin guardar el timer)
-        startTimer(); // Continuar timer (elapsedSeconds se debería guardar/cargar)
-    }
-
-    // Pequeña corrección para la lógica de mantener presionado el botón de vida
-    // La lógica actual de 'mousedown' para los botones de vida es un poco compleja con el 'hold'.
-    // Simplificación de la lógica de 'hold':
-    // Mousedown: aplicar +/- 1. Iniciar un timeout.
-    // Timeout fires: Iniciar un interval. En cada tick del interval, aplicar +/-1 y actualizar el preview.
-    // Mouseup/mouseleave: Detener timeout e interval. El valor total ya fue aplicado incrementalmente.
-
-    // Re-escribiendo la parte de los botones de vida para mayor claridad y corrección del 'hold'
-    // Esta parte ya está integrada arriba, pero el comentario de "re-escribiendo" es para enfatizar que la lógica del hold es tricky.
-    // La clave es que el cambio de vida y el check de condiciones se hagan en cada tick del hold o en el click.
-    // La versión en `renderPlayerCard` intenta esto. El `lifeChangeAmount` en el `stopLifeChange` es lo que se debe aplicar adicionalmente.
-    // Pero si los cambios se aplican en cada tick del interval, entonces al soltar no hay que hacer nada más.
-    // Voy a ajustar la lógica de `renderPlayerCard` para que los cambios se apliquen en cada tick del hold.
-
-    // **Ajuste en `renderPlayerCard` para `btn.addEventListener('mousedown', ...)` y `stopLifeChange`**:
-    // He modificado la lógica dentro de `renderPlayerCard` para que `lifeChangeAmount` represente el *total acumulado por el hold*
-    // y se aplique *después* de soltar el botón. El +/-1 inicial ocurre al hacer clic.
-    // En `stopLifeChange`, el `lifeChangeAmount` es el valor *adicional* que se suma/resta.
-    // **CORRECCIÓN FINAL EN `renderPlayerCard` para el hold:**
-    // - `mousedown`: aplica el primer +/-1. player.life += singleDelta;
-    // - `setTimeout`: inicia el `lifeChangeInterval`.
-    // - `lifeChangeInterval`: *solo* actualiza `lifeChangeAmount` (el acumulado del hold) y el `previewCounter`. *No* modifica `player.life` aquí.
-    // - `mouseup/mouseleave`: `player.life += lifeChangeAmount;` (aplica el total acumulado del hold). Resetea `lifeChangeAmount`.
-    // Esta es la lógica que intenté implementar arriba en `renderPlayerCard`. La parte `if (previewCounter.textContent && ...)` en `stopLifeChange` hace esto.
+    loadState();
+    softResetGame(); // Iniciar la primera partida al cargar
 
 });
